@@ -40,12 +40,12 @@ service:
   detectors:
     title:
       priority: 1 # NYI - Not Yet Implemented
-      detector: detectors.gnd_string
+      detector: detectors.wd_string
       runs_on: 
         - title: parser.title
       exec: download-video
     #skin: # The internal name of the detector. Use this to reference the detector later on, such as detectors.skin
-    #  detector: detectors.gnd_skin # The actual class name of the detector to use
+    #  detector: detectors.wd_skin # The actual class name of the detector to use
     #  cache: cache/
     #  runs_on: # One or more properties to pass into the detector. Properties keep their names from parser, and the detector may require them to be named according to a specific standard.
     #    - video: parser.video_thumbnail # An example property being passed in. 
