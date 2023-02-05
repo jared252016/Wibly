@@ -1,0 +1,6 @@
+lib/**/*
+lib
+__pycache__
+__pycache__/**/*
+services
+services/**/*

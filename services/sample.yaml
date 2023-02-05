@@ -1,0 +1,98 @@
+service:
+  # Basic parameters for a service
+  name: downloader # Name
+  baseurl: "https://website.com/" # Base / Starting URL
+  pageurl: "https://website.com/page{%d}.html" # Page URL, where {%d} is the page number
+  # The Parser, which locates elements on the page collecting data for use elsewhere. When using data from parser, use parser.[element], 
+  # where [element] is the name of the information that was stored.
+  parser:
+    item: "div.item.item-col" # We want all divs with the class .item
+    video_id:
+      item:
+        - tag: parent # We can also set the tag to parent, to use the div.item tag
+        - attr: data-video-id # Here we get the attribute data-video-id
+        - attr-type: int # Here we tell it that the value for data-video-id should be an integer. In Python this will mean int(val) was called. Supports int and str, default is str.
+    title: # Set our title property
+      item: # Tell it the parent is item
+        - tag: a # Tag
+        - class: title # Class
+        - attr: text # Attribute
+    video_thumbnail: 
+      item:
+        - tag: img
+        - attr: data-preview
+    image_thumbnail: 
+      item:
+        - tag: img
+        - attr: src
+    video_url:
+      item:
+        - tag: a
+        - class: image
+        - attr: href
+    next_page_url: 
+      global: # For global elements, tell it to use global
+        - tag: li
+        - class: next
+        - attr: a.href
+  # Detectors are key to being able to make a smart decision based on information we collect. Properties obtained from the parser are able to be passed through a detector.
+  # Detectors have the ability to load content, run machine learning models against it, and return results
+  detectors:
+    title:
+      priority: 1 # NYI - Not Yet Implemented
+      detector: detectors.gnd_string
+      runs_on: 
+        - title: parser.title
+      exec: download-video
+    #skin: # The internal name of the detector. Use this to reference the detector later on, such as detectors.skin
+    #  detector: detectors.gnd_skin # The actual class name of the detector to use
+    #  cache: cache/
+    #  runs_on: # One or more properties to pass into the detector. Properties keep their names from parser, and the detector may require them to be named according to a specific standard.
+    #    - video: parser.video_thumbnail # An example property being passed in. 
+    #
+    #  exec: download-critera # The command to execute on completion
+  # Commands are executable actions that can be triggered on the on-complete event of a detector (exec). Commands consist of multiple components as well as critera that determines
+  # if the command is actually run or not, based on the detectors. 
+  commands:
+    download-video: # The name of the command to run, which is what is used elsewhere in the yaml configuration.
+      action: youtube-dl # The action to take. These are internal actions built into gn_auto. 
+      cache: cache/
+      location: /path/to/my/files/ # Location to store downloaded files
+      args: # Pass arguments to the action
+        - no_check_certificate: True # We pass in no-check-certificate, which is translated to --no-check-certificate and passed to the youtube-dl binary.
+        - url: parser.video_url # We pass in our url, telling it to use the value from parser.video_url.
+        # - local_file=commands.download-video.out_file # Commands can add return values to the list of properties as well. Daisy chaining commands can use this data like so.
+      critera: # The critera to determine whether or not the action runs. The critera in this section all use the "or" operator. Any "and" operators should be done as a critera.
+        apples:
+          detector: detectors.title
+          mode: or
+          modify: lower
+          require:
+            - apple
+            - apples
+            - green apple
+            - red apple
+        bananas:
+          detector: detectors.title
+          mode: or
+          modify: lower
+          require:
+            - bananas
+            - banana
+        oranges:
+          detector: detectors.title # the detector being used
+          mode: single # The mode is set to single, so that only one require value will be used.
+          modify: upper # A modify option is passed through to tell the detector to uppercase the return value
+          require:
+            - ORANGE
+      exec: "update-database" # Supports calling an additional command upon the completion of a command, passing in all properties including the path to the newly outputted files.
+    update-database: # A second command that runs after the first command by daisy chaining with the exec property.
+      action: media-insert-update # The media-insert-update action inserts a new row into a table or updates it if it already exists, automatically populating filesize and the other properties not specified.
+      args:
+        - primary_key: url # The primary key argument tells the SQL insert/update to use this field as the primary key
+        - title: parser.title # Pass in the title parameter into the query
+        - url: parser.video_url # Pass in the url parameter into the query
+        - download_url: commands.download-video.download_url # Pass in the previous command's download_url property (from youtube-dl)
+        - download_file: commands.download-video.out_file # Pass in the previous command's out_file property (from youtube-dl)
+
+      
